@@ -1,0 +1,9 @@
+tell application "Keynote"
+  activate
+  open the "<%= file_path %>"
+  tell document 1
+    start from slide 1
+    delay 1
+    return slides count
+  end tell
+end tell

@@ -1,0 +1,6 @@
+tell application "Keynote"
+  show previous
+  delay 1
+  return slide number of current slide of front document
+  return "current:" & cr
+end tell

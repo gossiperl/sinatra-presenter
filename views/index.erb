@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sinatra presenter</title>
+    <meta name="viewport" content="width=device-width,
+                                   initial-scale=1.0,
+                                   maximum-scale=1.0,
+                                   user-scalable=no,
+                                   minimal-ui">
+    <link rel="stylesheet" href="/js/appjs-v3/app.min.css" />
+    <link rel="stylesheet" href="/css/sinatra-presenter.css" />
+  </head>
+  <body>
+    <script src="/js/zeptojs/zepto.js"></script>
+    <script src="/js/appjs-v3/app.min.js"></script>
+    <script src="/js/jquery/jquery-2.1.1.js"></script>
+    <div class="app-page" data-page="noconnection">
+      <div class="app-topbar">
+        <div class="app-title">Sinatra presenter</div>
+      </div>
+      <div class="app-content" id="noconn">
+        <p class="noconn tcenter">
+          <strong>No connection</strong><br/>
+          Start the Sinatra presenter sever.<br/>
+          <a href="#" class="app-button" id="instructions">Instructions</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="app-page" data-page="instructions">
+      <div class="app-topbar">
+        <div class="app-button left" data-back>Back</div>
+        <div class="app-title">Server instructions</div>
+      </div>
+      <div class="app-content">
+        <p class="instructions">On your OS X, ensure you have <code>ruby</code>, <code>gem</code> and <code>git</code> installed.</p>
+        <p class="instructions">Once <code>ruby -v</code> gives you some sensible result (not an error), install the server:</p>
+        <p class="instructions code">
+          <code>git clone https://github.com/gossiperl/sinatra-presenter.git</code><br/>
+          <code>cd sinatra-presenter</code><br/>
+          <code>gem install bundler</code><br/>
+          <code>bundle install</code><br/>
+        </p>
+        <p class="instructions">Place your keynote files in the <code>preos</code> directory.</p>
+        <p class="instructions">Start the server:</p>
+        <p class="instructions code bottom"><code>ruby app.rb</code></p>
+      </div>
+    </div>
+
+    <div class="app-page" data-page="list">
+      <div class="app-topbar">
+        <div class="app-title">Your presentations</div>
+      </div>
+      <div class="app-content">
+        <ul class="app-list" id="presos">
+        </ul>
+      </div>
+    </div>
+
+    <div class="app-page" data-page="presentation">
+      <div class="app-topbar">
+        <div class="app-title" id="file"></div>
+      </div>
+      <div class="app-content">
+        <h3 class="tcenter">slide <span id="currentSlide"></span> of <span id="totalSlide"></span></h3>
+        <div class="slide_control">
+          <img src="/images/prev.png" class="slide_button" id="btnPrev" />
+          <img src="/images/next.png" class="slide_button" id="btnNext" />
+        </div>
+        <div id="stop">
+          <div class="app-button" id="stopPreso">Stop presenting</div>
+        </div>
+      </div>
+    </div>
+
+    <script type="text/javascript">
+
+      var wsInterval = null;
+      var connected = false;
+      var lastPreso = null;
+
+      function hideLoader() {
+        $(".loader").remove();
+      }
+
+      function showLoader() {
+        hideLoader();
+        $(document.body).append('<div class="loader"><div>&nbsp;</div></div>');
+      }
+
+      function displayPresos(ws, data) {
+        if (data.length == 0) {
+          $("#presos").empty();
+          $("#presos").append("No presentations");
+        } else {
+          $("#presos").empty();
+          if (data.length == 1) {
+            $("#presos").append( data.length + " presentation");
+          } else {
+            $("#presos").append( data.length + " presentations");
+          }
+          data.forEach(function(item) {
+            var name = item.substr(item.lastIndexOf("/")+1, item.length);
+            $("#presos").append("<li data-path='" + item + "' class='app-button preso'>" + name + "</li>" );
+          });
+          $(".preso").click(function() {
+            showLoader();
+            ws.send( JSON.stringify({command: "open", document: $(this).attr("data-path")}) );
+          });
+        }
+      };
+
+      function applicationState(state) {
+        $("#file").text(state.path.substr(state.path.lastIndexOf("/")+1, state.path.length));
+        $("#currentSlide").text(state.slide);
+        $("#totalSlide").text(state.total);
+        $("#stopPreso").click(function() {
+          if ( confirm("Are you sure?") ) {
+            state.ws.send( JSON.stringify({ command: "stop", document: state.path }) );
+          }
+        });
+        $("#btnPrev").click(function() {
+          showLoader();
+          state.ws.send( JSON.stringify({ command: "prev", document: state.path }) );
+        });
+        $("#btnNext").click(function() {
+          showLoader();
+          state.ws.send( JSON.stringify({ command: "next", document: state.path }) );
+        });
+      }
+
+      $(document).ready(function() {
+
+        App.load("noconnection");
+
+        $("#instructions").click(function() {
+          App.load("instructions");
+        });
+
+        setInterval(function() {
+          if (!connected) {
+            var ws = new WebSocket('ws://' + window.location.host + window.location.pathname);
+            ws.onopen = function()  {
+              connected = true;
+              if ( lastPreso == null ) {
+                App.load("list");
+              } else {
+                App.load("presentation");
+                lastPreso.ws = ws;
+                applicationState(lastPreso);
+              }
+            };
+            ws.onclose   = function()  {
+              connected = false;
+              App.load("noconnection");
+              clearInterval(wsInterval);
+            }
+            ws.onmessage = function(m) {
+              hideLoader();
+              try {
+                var p = JSON.parse( m.data );
+                if ( p.response == "presos" ) {
+                  setTimeout(function() {
+                    displayPresos( ws, p.presos )
+                  }, 500);
+                } else if ( p.response == "opened" ) {
+                  App.load("presentation");
+                  lastPreso = {
+                    slide: 1,
+                    total: p.slides,
+                    path: p.document,
+                    ws: ws
+                  };
+                  applicationState(lastPreso);
+                } else if ( p.response == "quit" ) {
+                  lastPreso = null;
+                  ws.close();
+                } else if ( p.response == "changed" ) {
+                  lastPreso.slide = p.slide;
+                  $("#currentSlide").text( lastPreso.slide );
+                }
+              } catch (e) {
+                console.error("Error while parsing incoming WS data.", m.data);
+              }
+            };
+          }
+        }, 1000);
+      });
+
+    </script>
+
+  </body>
+</html>

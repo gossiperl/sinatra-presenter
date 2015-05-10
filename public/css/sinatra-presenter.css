@@ -1,0 +1,65 @@
+.noconn {
+  padding-top: 25px;
+}
+.instructions {
+  margin: 25px 25px 0 25px;
+}
+.code {
+  margin: 25px 15px 0 40px;
+}
+.bottom {
+  margin-bottom: 25px;
+}
+.noconn > strong {
+  color: #c00;
+}
+.tcenter {
+  text-align: center;
+}
+#stop {
+  position: absolute;
+  top: calc(100%);
+  width: calc(100%);
+}
+#stop > div {
+  font-weight: bold;
+  color: #c00;
+}
+#noconn {
+  background-image: url(/images/noconn.png);
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+}
+.slide_control {
+  margin-top: 20px;
+  width: 270px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.slide_button {
+  width: 128px;
+  height: 128px;
+}
+.next {
+  float: right;
+}
+
+.loader {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.2);
+  background-image: url(/images/loader-bg.png);
+  background-position: 50% 50%;
+  background-repeat: no-repeat;
+}
+.loader > div {
+  width: 100%;
+  height: 100%;
+  background-image: url(/images/loader.gif);
+  background-position: 50% 50%;
+  background-repeat: no-repeat;
+}
