@@ -216,7 +216,7 @@
                   lastPreso = null;
                   ws.close();
                 } else if ( p.response == "changed" ) {
-                  lastPreso.slide = p.slide;
+                  lastPreso.slide = parseInt(p.slide+"");
                   $("#currentSlide").text( lastPreso.slide );
                   presoControlsEffects();
                 } else if ( p.response == "failed" ) {
