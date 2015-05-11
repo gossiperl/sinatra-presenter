@@ -75,6 +75,10 @@
 
     <script type="text/javascript">
 
+      var OPACITY_INACTIVE = 0.2;
+      var OPACITY_ACTIVE = 1;
+      var OPACITY_TOUCH = 0.6;
+
       var wsInterval = null;
       var connected = false;
       var lastPreso = null;
@@ -93,40 +97,74 @@
           $("#presos").empty();
           $("#presos").append("No presentations");
         } else {
+          var restore = null;
           $("#presos").empty();
-          if (data.length == 1) {
-            $("#presos").append( data.length + " presentation");
-          } else {
-            $("#presos").append( data.length + " presentations");
-          }
           data.forEach(function(item) {
-            var name = item.substr(item.lastIndexOf("/")+1, item.length);
-            $("#presos").append("<li data-path='" + item + "' class='app-button preso'>" + name + "</li>" );
+            $("#presos").append("<li data-path='" + item["path"] + "' data-name='" + item["name"] + "' class='app-button preso'>" + item["name"] + "</li>" );
+            if ( item["r"] == true ) {
+              restore = { slide: parseInt(item["slide"]+""),
+                          total: parseInt(item["total"]+""),
+                          path: item["path"],
+                          name: item["name"],
+                          ws: ws };
+            }
           });
+
           $(".preso").click(function() {
             showLoader();
-            ws.send( JSON.stringify({command: "open", document: $(this).attr("data-path")}) );
+            ws.send( JSON.stringify({command: "open", path: $(this).attr("data-path"), name: $(this).attr("data-name") }) );
           });
+
+          if ( restore != null ) {
+            App.load("presentation");
+            setTimeout(function() {
+              lastPreso = restore;
+              applicationState(lastPreso);
+            }, 500);
+          }
+
         }
       };
 
       function applicationState(state) {
-        $("#file").text(state.path.substr(state.path.lastIndexOf("/")+1, state.path.length));
+        $("#file").text(state.name);
         $("#currentSlide").text(state.slide);
         $("#totalSlide").text(state.total);
         $("#stopPreso").click(function() {
           if ( confirm("Are you sure?") ) {
+            showLoader();
             state.ws.send( JSON.stringify({ command: "stop", document: state.path }) );
           }
         });
+
+        $(".slide_button").on("touchstart", function() {
+          $(this).css("opacity", OPACITY_TOUCH);
+        });
+        $(".slide_button").on("touchend", function() {
+          presoControlsEffects();
+        });
+
         $("#btnPrev").click(function() {
-          showLoader();
-          state.ws.send( JSON.stringify({ command: "prev", document: state.path }) );
+          if ( lastPreso.slide > 1 ) {
+            showLoader();
+            state.ws.send( JSON.stringify({ command: "prev", current: lastPreso.slide, document: state.path }) );
+          }
         });
+
+
         $("#btnNext").click(function() {
-          showLoader();
-          state.ws.send( JSON.stringify({ command: "next", document: state.path }) );
+          if ( lastPreso.slide < lastPreso.total ) {
+            showLoader();
+            state.ws.send( JSON.stringify({ command: "next", current: lastPreso.slide, document: state.path }) );
+          }
         });
+
+        presoControlsEffects();
+      }
+
+      function presoControlsEffects() {
+        $("#btnPrev").css("opacity", ( lastPreso.slide == 1 ) ? OPACITY_INACTIVE : OPACITY_ACTIVE );
+        $("#btnNext").css("opacity", ( lastPreso.slide == lastPreso.total ) ? OPACITY_INACTIVE : OPACITY_ACTIVE );
       }
 
       $(document).ready(function() {
@@ -141,6 +179,7 @@
           if (!connected) {
             var ws = new WebSocket('ws://' + window.location.host + window.location.pathname);
             ws.onopen = function()  {
+              hideLoader();
               connected = true;
               if ( lastPreso == null ) {
                 App.load("list");
@@ -159,25 +198,31 @@
               hideLoader();
               try {
                 var p = JSON.parse( m.data );
-                if ( p.response == "presos" ) {
+                if ( p.response == "state" ) {
                   setTimeout(function() {
                     displayPresos( ws, p.presos )
                   }, 500);
                 } else if ( p.response == "opened" ) {
                   App.load("presentation");
-                  lastPreso = {
-                    slide: 1,
-                    total: p.slides,
-                    path: p.document,
-                    ws: ws
-                  };
-                  applicationState(lastPreso);
+                  setTimeout(function() {
+                    lastPreso = { slide: 1,
+                                  total: p.slides,
+                                  path: p.path,
+                                  name: p.name,
+                                  ws: ws };
+                    applicationState(lastPreso);
+                  }, 500);
                 } else if ( p.response == "quit" ) {
                   lastPreso = null;
                   ws.close();
                 } else if ( p.response == "changed" ) {
                   lastPreso.slide = p.slide;
                   $("#currentSlide").text( lastPreso.slide );
+                  presoControlsEffects();
+                } else if ( p.response == "failed" ) {
+                  alert("Command " + p.command + " failed with code " + p.code + ".\nReason: " + p.error);
+                } else {
+                  alert("Unsupported server response: " + p.response);
                 }
               } catch (e) {
                 console.error("Error while parsing incoming WS data.", m.data);

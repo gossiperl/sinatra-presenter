@@ -1,0 +1,15 @@
+tell application "System Events"
+  if process "Keynote" exists then
+    tell application "Keynote"
+      if (count documents) > 0 then
+        tell front document
+          return ("ok:" & name & ":" & (slide number of the current slide) & ":" & (slide count))
+        end tell
+      else
+        return "error:no-document-opened"
+      end if
+    end tell
+  else
+    return "error:keynote-not-running"
+  end if
+end tell
