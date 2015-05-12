@@ -30,19 +30,6 @@
   background-repeat: no-repeat;
   background-position: 50% 50%;
 }
-.slide_control {
-  margin-top: 20px;
-  width: 270px;
-  margin-left: auto;
-  margin-right: auto;
-}
-.slide_button {
-  width: 128px;
-  height: 128px;
-}
-.next {
-  float: right;
-}
 
 .loader {
   width: 100%;
@@ -62,4 +49,40 @@
   background-image: url(/images/loader.gif);
   background-position: 50% 50%;
   background-repeat: no-repeat;
+}
+
+/* slide control */
+
+.sc {
+  width: 50%;
+  height: 70vh;
+  float: left;
+}
+
+.scp {
+  float: left;
+}
+
+.scn {
+  float: right;
+}
+
+.sc > span.helper {
+  display: inline-block;
+  height: 30%;
+  vertical-align: middle;
+}
+
+.sc > img {
+  display: block;
+  vertical-align: middle;
+  margin: 0 auto;
+  width: 128px;
+  height: 128px;
+}
+
+.clear {
+  clear: both;
+  font-size: 1px;
+  height: 1px;
 }
